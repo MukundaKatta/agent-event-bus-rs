@@ -1,0 +1,21 @@
+[package]
+name = "agent-event-bus"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Tiny in-process pub/sub for agent loop events. Sync-only Rust mirror of the Python agent-event-bus library: register handlers by event name (or `*` for every event), emit, and remove via opaque Subscription handles. Subscriber panics are isolated so the bus keeps dispatching."
+authors = ["Mukunda Rao Katta <mukunda.vjcs6@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/MukundaKatta/agent-event-bus-rs"
+homepage = "https://github.com/MukundaKatta/agent-event-bus-rs"
+documentation = "https://docs.rs/agent-event-bus"
+readme = "README.md"
+keywords = ["llm", "agents", "pubsub", "event-bus"]
+categories = ["api-bindings"]
+exclude = [".github/*", "target/*"]
+
+[dependencies]
+serde_json = "1"
+
+[dev-dependencies]
+serde_json = "1"
