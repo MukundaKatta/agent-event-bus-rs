@@ -272,14 +272,23 @@ impl EventBus {
         // looks up by subscription id. Handlers run while holding the
         // mutex, which means same-thread re-entry into the bus will
         // deadlock — a deliberate trade-off to keep this crate small.
+        //
+        // The exact-name bucket is collected before the wildcard bucket so
+        // the documented "exact handlers, then firehose handlers" order
+        // holds regardless of which bucket was created first.
         let to_fire: Vec<(String, u64)> = {
             let inner = self.inner.lock().unwrap();
             let mut out = Vec::new();
-            for (key, slots) in &inner.buckets {
-                if key == event_name || key == WILDCARD {
+            if event_name != WILDCARD {
+                if let Some((key, slots)) = inner.buckets.iter().find(|(k, _)| k == event_name) {
                     for slot in slots {
                         out.push((key.clone(), slot.sub.id));
                     }
+                }
+            }
+            if let Some((key, slots)) = inner.buckets.iter().find(|(k, _)| k == WILDCARD) {
+                for slot in slots {
+                    out.push((key.clone(), slot.sub.id));
                 }
             }
             out

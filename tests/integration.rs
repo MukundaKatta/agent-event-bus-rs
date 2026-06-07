@@ -8,7 +8,10 @@ use serde_json::{json, Value};
 
 // ---------- helpers ----------
 
-fn make_seen() -> (Arc<Mutex<Vec<String>>>, impl Fn(&Event) + Send + Sync + 'static) {
+fn make_seen() -> (
+    Arc<Mutex<Vec<String>>>,
+    impl Fn(&Event) + Send + Sync + 'static,
+) {
     let seen = Arc::new(Mutex::new(Vec::<String>::new()));
     let cl = Arc::clone(&seen);
     let handler = move |e: &Event| cl.lock().unwrap().push(e.name.clone());
@@ -86,6 +89,32 @@ fn wildcard_and_exact_both_fire() {
     bus.on("*", move |_| o2.lock().unwrap().push("firehose"));
     bus.emit("e", Value::Null);
     assert_eq!(order.lock().unwrap().as_slice(), &["exact", "firehose"]);
+}
+
+#[test]
+fn exact_fires_before_wildcard_even_when_wildcard_registered_first() {
+    // Dispatch order must follow the documented "exact then firehose"
+    // contract regardless of bucket creation order.
+    let bus = EventBus::new();
+    let order = Arc::new(Mutex::new(Vec::<&'static str>::new()));
+    let o1 = Arc::clone(&order);
+    let o2 = Arc::clone(&order);
+    bus.on("*", move |_| o1.lock().unwrap().push("firehose"));
+    bus.on("e", move |_| o2.lock().unwrap().push("exact"));
+    bus.emit("e", Value::Null);
+    assert_eq!(order.lock().unwrap().as_slice(), &["exact", "firehose"]);
+}
+
+#[test]
+fn emitting_wildcard_name_fires_firehose_handlers_once() {
+    // Emitting the literal "*" name should fire firehose handlers exactly
+    // once (not twice via both the exact and wildcard match paths).
+    let bus = EventBus::new();
+    let count = Arc::new(Mutex::new(0u32));
+    let cl = Arc::clone(&count);
+    bus.on("*", move |_| *cl.lock().unwrap() += 1);
+    bus.emit("*", Value::Null);
+    assert_eq!(*count.lock().unwrap(), 1);
 }
 
 // ---------- order ----------
